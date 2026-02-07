@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firecrawl + Valkey Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0; line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 2rem; color: #38bdf8; margin-bottom: 0.5rem; }
+    header p { color: #94a3b8; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; border: 1px solid #334155; }
+    .card.full-width { grid-column: 1 / -1; }
+    .card h2 { color: #38bdf8; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .card .desc { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem; }
+    input, button { padding: 0.75rem 1rem; border-radius: 8px; border: none; font-size: 0.9rem; }
+    input { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; width: 100%; margin-bottom: 0.75rem; }
+    input:focus { outline: none; border-color: #38bdf8; }
+    button { background: #38bdf8; color: #0f172a; cursor: pointer; font-weight: 600; }
+    button:hover { background: #0ea5e9; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    button.secondary { background: #334155; color: #e2e8f0; }
+    button.secondary:hover { background: #475569; }
+    .btn-row { display: flex; gap: 0.5rem; }
+    .btn-row button { flex: 1; }
+    .output { padding: 1rem; background: #0f172a; border-radius: 8px; margin-top: 1rem; font-family: monospace; font-size: 0.85rem; max-height: 250px; overflow: auto; white-space: pre-wrap; border: 1px solid #334155; }
+    .output.markdown-output { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; white-space: normal; max-height: 400px; }
+    .output.markdown-output h1, .output.markdown-output h2, .output.markdown-output h3 { color: #38bdf8; margin: 1rem 0 0.5rem 0; }
+    .output.markdown-output h1 { font-size: 1.4rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+    .output.markdown-output h2 { font-size: 1.2rem; }
+    .output.markdown-output h3 { font-size: 1rem; }
+    .output.markdown-output p { margin: 0.5rem 0; }
+    .output.markdown-output a { color: #38bdf8; text-decoration: underline; }
+    .output.markdown-output ul, .output.markdown-output ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+    .output.markdown-output li { margin: 0.25rem 0; }
+    .output.markdown-output code { background: #334155; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
+    .output.markdown-output pre { background: #334155; padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 0.5rem 0; }
+    .output.markdown-output pre code { background: none; padding: 0; }
+    .output.markdown-output blockquote { border-left: 3px solid #38bdf8; padding-left: 1rem; margin: 0.5rem 0; color: #94a3b8; }
+    .output.markdown-output hr { border: none; border-top: 1px solid #334155; margin: 1rem 0; }
+    .output.markdown-output table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
+    .output.markdown-output th, .output.markdown-output td { border: 1px solid #334155; padding: 0.5rem; text-align: left; }
+    .output.markdown-output th { background: #334155; }
+    .scrape-meta { background: #334155; padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem; font-size: 0.85rem; }
+    .scrape-meta strong { color: #38bdf8; }
+    .tabs { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .tab { padding: 0.5rem 1rem; background: #334155; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 0.85rem; border: 1px solid #334155; border-bottom: none; }
+    .tab.active { background: #0f172a; color: #38bdf8; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .stats { display: flex; gap: 1rem; margin-bottom: 1rem; }
+    .stat { flex: 1; text-align: center; padding: 0.75rem; background: #0f172a; border-radius: 8px; }
+    .stat-value { font-size: 1.5rem; font-weight: bold; color: #38bdf8; }
+    .stat-label { font-size: 0.75rem; color: #94a3b8; }
+    .connection { position: fixed; top: 1rem; right: 1rem; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; background: #166534; color: #22c55e; }
+    .connection.disconnected { background: #7f1d1d; color: #ef4444; }
+    textarea { width: 100%; min-height: 80px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; padding: 0.75rem; font-family: inherit; resize: vertical; margin-bottom: 0.75rem; }
+    .meter { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin: 0.5rem 0; }
+    .meter-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #38bdf8); transition: width 0.3s; }
+    .key-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #0f172a; border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.8rem; }
+    .key-row.exists { border-left: 3px solid #22c55e; }
+    .key-row.empty { border-left: 3px solid #475569; opacity: 0.6; }
+    .key-name { font-family: monospace; color: #38bdf8; flex: 1; word-break: break-all; }
+    .key-type { background: #334155; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; color: #94a3b8; }
+    .key-size { color: #22c55e; font-weight: bold; }
+    .key-ttl { color: #f59e0b; font-size: 0.75rem; }
+    .key-value { margin-top: 0.5rem; padding: 0.5rem; background: #1e293b; border-radius: 4px; font-family: monospace; font-size: 0.75rem; max-height: 100px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div id="connection" class="connection disconnected">● Connecting...</div>
+  
+  <div class="container">
+    <header>
+      <h1>🔥 Firecrawl + Valkey Demo</h1>
+      <p>Demonstrating web scraping with rate limiting, caching, and batch operations — all backed by Valkey</p>
+    </header>
+
+    <div class="grid">
+      <!-- Rate Limiting -->
+      <div class="card">
+        <h2>Rate Limiting</h2>
+        <p class="desc">Firecrawl uses Valkey for rate limiting. Make requests to see it in action.</p>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value" id="rlRequests">0</div>
+            <div class="stat-label">Requests Made</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="rlSuccess">0</div>
+            <div class="stat-label">Success</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="rlLimited">0</div>
+            <div class="stat-label">Rate Limited</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button onclick="makeRateLimitRequest()">Make Request</button>
+          <button onclick="burstRequests(5)">Burst 5</button>
+          <button class="secondary" onclick="resetRateLimitStats()">Reset Stats</button>
+        </div>
+        <div id="rlOutput" class="output" style="display:none;"></div>
+      </div>
+
+      <!-- Scraping -->
+      <div class="card">
+        <h2>Web Scraping</h2>
+        <p class="desc">Scrape any URL. Firecrawl queues jobs in Valkey.</p>
+        <input type="url" id="scrapeUrl" placeholder="URL to scrape" value="https://example.com">
+        <button onclick="scrapeUrl()" style="width: 100%;">Scrape</button>
+        <div id="scrapeResult" style="display:none;">
+          <div id="scrapeMeta" class="scrape-meta"></div>
+          <div class="tabs">
+            <div class="tab active" onclick="switchScrapeTab('rendered')">Rendered</div>
+            <div class="tab" onclick="switchScrapeTab('raw')">Raw Markdown</div>
+          </div>
+          <div id="scrapeRendered" class="output markdown-output tab-content active"></div>
+          <div id="scrapeRaw" class="output tab-content" style="border-radius: 0 8px 8px 8px;"></div>
+        </div>
+        <div id="scrapeOutput" class="output" style="display:none;"></div>
+      </div>
+
+      <!-- Crawling with Valkey Inspector -->
+      <div class="card full-width">
+        <h2>Web Crawling</h2>
+        <p class="desc">Crawl multiple pages. All crawl state is stored in Valkey — see it live below.</p>
+        <input type="url" id="crawlUrl" placeholder="URL to crawl" value="https://example.com">
+        <div class="btn-row">
+          <button onclick="startCrawl()">Start Crawl</button>
+          <button class="secondary" onclick="checkCrawlStatus()">Check Status</button>
+          <button class="secondary" onclick="inspectCrawlKeys()">🔍 Inspect Valkey</button>
+        </div>
+        <div id="crawlOutput" class="output" style="display:none;"></div>
+        
+        <!-- Integrated Valkey Inspector -->
+        <div id="inspectorSection" style="display:none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155;">
+          <div style="font-size: 0.9rem; color: #38bdf8; margin-bottom: 0.75rem; font-weight: 600;">🔍 Valkey Keys for this Crawl</div>
+          <div id="inspectorOutput"></div>
+        </div>
+      </div>
+
+      <!-- Batch Operations -->
+      <div class="card full-width">
+        <h2>Batch Operations</h2>
+        <p class="desc">Queue multiple URLs. Progress stored in Valkey.</p>
+        <textarea id="batchUrls" placeholder="Enter URLs (one per line)">https://example.com
+https://example.org
+https://example.net</textarea>
+        <div class="btn-row">
+          <button onclick="startBatch()">Start Batch</button>
+          <button class="secondary" onclick="checkBatchStatus()">Check Status</button>
+        </div>
+        <div class="stats" style="margin-top: 1rem; margin-bottom: 0;">
+          <div class="stat">
+            <div class="stat-value" id="batchProgress">-</div>
+            <div class="stat-label">Progress</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="batchStatus">-</div>
+            <div class="stat-label">Status</div>
+          </div>
+        </div>
+        <div class="meter"><div class="meter-fill" id="batchMeter" style="width: 0%"></div></div>
+        <div id="batchOutput" class="output" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+    let currentCrawlId = null;
+    let currentBatchId = null;
+    let rlStats = { requests: 0, success: 0, limited: 0 };
+
+    // Use marked library for markdown parsing
+    function parseMarkdown(md) {
+      if (!md) return '<p class="empty">No content</p>';
+      return marked.parse(md);
+    }
+
+    // Tab switching for scrape output
+    function switchScrapeTab(tab) {
+      const tabs = document.querySelectorAll('.tabs .tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      
+      document.getElementById('scrapeRendered').classList.remove('active');
+      document.getElementById('scrapeRaw').classList.remove('active');
+      
+      if (tab === 'rendered') {
+        tabs[0].classList.add('active');
+        document.getElementById('scrapeRendered').classList.add('active');
+      } else {
+        tabs[1].classList.add('active');
+        document.getElementById('scrapeRaw').classList.add('active');
+      }
+    }
+
+    // Health check
+    async function checkHealth() {
+      try {
+        const res = await fetch(`${API}/api/health`);
+        const data = await res.json();
+        const el = document.getElementById('connection');
+        if (data.status === 'ok') {
+          el.className = 'connection';
+          el.textContent = '● Connected';
+        }
+      } catch {
+        document.getElementById('connection').className = 'connection disconnected';
+        document.getElementById('connection').textContent = '● Disconnected';
+      }
+    }
+
+    // Rate Limiting
+    function updateRateLimitStats() {
+      document.getElementById('rlRequests').textContent = rlStats.requests;
+      document.getElementById('rlSuccess').textContent = rlStats.success;
+      document.getElementById('rlLimited').textContent = rlStats.limited;
+    }
+
+    async function makeRateLimitRequest() {
+      const output = document.getElementById('rlOutput');
+      output.style.display = 'block';
+      rlStats.requests++;
+      updateRateLimitStats();
+
+      try {
+        const res = await fetch(`${API}/api/demo/rate-limited`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: 'https://example.com' })
+        });
+
+        if (res.status === 429) {
+          rlStats.limited++;
+          const data = await res.json();
+          output.textContent = `❌ Rate limited (429)\n\nValkey-backed rate limiter blocked this request.\nRetry after: ${data.retryAfter}s`;
+        } else {
+          rlStats.success++;
+          output.textContent = `✅ Request successful (${res.status})`;
+        }
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+      updateRateLimitStats();
+    }
+
+    async function burstRequests(count) {
+      const output = document.getElementById('rlOutput');
+      output.style.display = 'block';
+      output.textContent = `Sending ${count} requests...\n`;
+
+      for (let i = 0; i < count; i++) {
+        rlStats.requests++;
+        updateRateLimitStats();
+        
+        try {
+          const res = await fetch(`${API}/api/demo/rate-limited`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: 'https://example.com' })
+          });
+
+          if (res.status === 429) {
+            rlStats.limited++;
+            output.textContent += `Request ${i + 1}: ❌ Rate limited\n`;
+          } else {
+            rlStats.success++;
+            output.textContent += `Request ${i + 1}: ✅ Success\n`;
+          }
+        } catch (e) {
+          output.textContent += `Request ${i + 1}: Error\n`;
+        }
+        updateRateLimitStats();
+      }
+    }
+
+    function resetRateLimitStats() {
+      rlStats = { requests: 0, success: 0, limited: 0 };
+      updateRateLimitStats();
+      document.getElementById('rlOutput').style.display = 'none';
+    }
+
+    // Scraping
+    async function scrapeUrl() {
+      const url = document.getElementById('scrapeUrl').value;
+      const output = document.getElementById('scrapeOutput');
+      const result = document.getElementById('scrapeResult');
+      const meta = document.getElementById('scrapeMeta');
+      const rendered = document.getElementById('scrapeRendered');
+      const raw = document.getElementById('scrapeRaw');
+      
+      // Show loading state
+      result.style.display = 'none';
+      output.style.display = 'block';
+      output.textContent = 'Scraping...';
+
+      try {
+        const res = await fetch(`${API}/api/scrape`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          const title = data.data?.metadata?.title || 'No title';
+          const markdown = data.data?.markdown || '';
+          const words = markdown.split(/\s+/).filter(w => w).length;
+          const elapsed = data.elapsed || 0;
+          
+          // Hide simple output, show rich result
+          output.style.display = 'none';
+          result.style.display = 'block';
+          
+          // Show metadata
+          meta.innerHTML = `<strong>✅ Success</strong> (${elapsed}ms) &nbsp;|&nbsp; <strong>Title:</strong> ${title} &nbsp;|&nbsp; <strong>Words:</strong> ${words.toLocaleString()}`;
+          
+          // Render markdown
+          rendered.innerHTML = parseMarkdown(markdown);
+          
+          // Show raw markdown
+          raw.textContent = markdown;
+          
+          // Reset to rendered tab
+          switchScrapeTab('rendered');
+        } else {
+          output.textContent = `❌ Error: ${data.error}`;
+        }
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // Crawling
+    async function startCrawl() {
+      const url = document.getElementById('crawlUrl').value;
+      const output = document.getElementById('crawlOutput');
+      output.style.display = 'block';
+      output.textContent = 'Starting crawl...';
+
+      try {
+        const res = await fetch(`${API}/api/crawl`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, limit: 5 })
+        });
+        const data = await res.json();
+
+        if (data.success && data.id) {
+          currentCrawlId = data.id;
+          output.textContent = `✅ Crawl started\n\nID: ${data.id}\n\nClick "Check Status" to monitor progress.`;
+        } else {
+          output.textContent = `❌ Error: ${data.error}`;
+        }
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function checkCrawlStatus() {
+      if (!currentCrawlId) {
+        alert('Start a crawl first');
+        return;
+      }
+      const output = document.getElementById('crawlOutput');
+      output.style.display = 'block';
+      output.textContent = 'Checking status...';
+
+      try {
+        const res = await fetch(`${API}/api/crawl/${currentCrawlId}`);
+        const data = await res.json();
+
+        let text = `Status: ${data.status}\nProgress: ${data.completed || 0}/${data.total || 0}\n`;
+        if (data.data && data.data.length > 0) {
+          text += `\nPages:\n`;
+          data.data.forEach(p => {
+            text += `  • ${p.metadata?.title || p.url || 'Untitled'}\n`;
+          });
+        }
+        output.textContent = text;
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // Batch Operations
+    async function startBatch() {
+      const urls = document.getElementById('batchUrls').value.split('\n').filter(u => u.trim());
+      const output = document.getElementById('batchOutput');
+      output.style.display = 'block';
+      output.textContent = 'Starting batch...';
+
+      try {
+        const res = await fetch(`${API}/api/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls })
+        });
+        const data = await res.json();
+
+        if (data.success && data.id) {
+          currentBatchId = data.id;
+          document.getElementById('batchStatus').textContent = 'started';
+          document.getElementById('batchProgress').textContent = '0%';
+          output.textContent = `✅ Batch started\n\nID: ${data.id}\nURLs: ${urls.length}\n\nClick "Check Status" to monitor.`;
+        } else {
+          output.textContent = `❌ Error: ${data.error}`;
+        }
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function checkBatchStatus() {
+      if (!currentBatchId) {
+        alert('Start a batch first');
+        return;
+      }
+      const output = document.getElementById('batchOutput');
+      output.style.display = 'block';
+      output.textContent = 'Checking status...';
+
+      try {
+        const res = await fetch(`${API}/api/batch/${currentBatchId}`);
+        const data = await res.json();
+
+        const progress = data.total ? Math.round((data.completed / data.total) * 100) : 0;
+        document.getElementById('batchStatus').textContent = data.status || '-';
+        document.getElementById('batchProgress').textContent = progress + '%';
+        document.getElementById('batchMeter').style.width = progress + '%';
+
+        let text = `Status: ${data.status}\nProgress: ${data.completed || 0}/${data.total || 0}\n`;
+        if (data.data && data.data.length > 0) {
+          text += `\nCompleted:\n`;
+          data.data.forEach(p => {
+            text += `  ✅ ${p.metadata?.title || p.url || 'Untitled'}\n`;
+          });
+        }
+        output.textContent = text;
+      } catch (e) {
+        output.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // Valkey Inspector
+    async function inspectCrawlKeys() {
+      if (!currentCrawlId) {
+        alert('Start a crawl first');
+        return;
+      }
+
+      const section = document.getElementById('inspectorSection');
+      const output = document.getElementById('inspectorOutput');
+      section.style.display = 'block';
+      output.innerHTML = '<div style="color: #94a3b8;">Loading keys...</div>';
+
+      try {
+        const res = await fetch(`${API}/api/valkey/crawl/${currentCrawlId}`);
+        const data = await res.json();
+
+        let html = `<div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: #94a3b8;">
+          Crawl ID: <code style="color: #38bdf8;">${data.crawlId}</code>
+        </div>`;
+
+        for (const [key, info] of Object.entries(data.keys)) {
+          const exists = info.exists;
+          html += `<div class="key-row ${exists ? 'exists' : 'empty'}">
+            <span class="key-name">${key}</span>
+            <span class="key-type">${info.type}</span>
+            ${info.size !== null && info.size !== undefined ? `<span class="key-size">${info.size} items</span>` : ''}
+            ${info.ttl ? `<span class="key-ttl">TTL: ${info.ttl}s</span>` : ''}
+          </div>`;
+          
+          // Show description
+          html += `<div style="font-size: 0.75rem; color: #64748b; margin: -0.25rem 0 0.5rem 0.5rem;">${info.desc}</div>`;
+          
+          // Show value preview for existing keys
+          if (exists && info.value) {
+            let valueStr;
+            if (typeof info.value === 'object') {
+              valueStr = JSON.stringify(info.value, null, 2);
+              if (valueStr.length > 500) valueStr = valueStr.slice(0, 500) + '\n...';
+            } else {
+              valueStr = String(info.value);
+            }
+            html += `<div class="key-value">${escapeHtml(valueStr)}</div>`;
+          }
+        }
+
+        output.innerHTML = html;
+      } catch (e) {
+        output.innerHTML = `<div style="color: #ef4444;">Error: ${e.message}</div>`;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Init
+    checkHealth();
+    setInterval(checkHealth, 10000);
+  </script>
+</body>
+</html>

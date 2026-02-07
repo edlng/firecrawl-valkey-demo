@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sample Article - Benchmark Page</title>
+  <meta name="description" content="A sample article page for benchmarking web scraping performance">
+  <meta name="author" content="Benchmark Test">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </header>
+  
+  <main>
+    <article>
+      <h1>Understanding Web Scraping Performance</h1>
+      <p class="meta">Published: January 15, 2026 | Author: Test Author</p>
+      
+      <section>
+        <h2>Introduction</h2>
+        <p>Web scraping is the process of automatically extracting data from websites. When building a web scraper at scale, performance becomes critical. This article explores the key factors that affect scraping performance.</p>
+        <p>Modern web scrapers need to handle thousands of requests per minute while respecting rate limits and maintaining data quality.</p>
+      </section>
+      
+      <section>
+        <h2>Key Performance Factors</h2>
+        <ul>
+          <li><strong>Network Latency:</strong> The time it takes for requests to travel between your scraper and the target server.</li>
+          <li><strong>Parsing Speed:</strong> How quickly your scraper can extract data from HTML documents.</li>
+          <li><strong>Concurrency:</strong> The number of simultaneous requests your scraper can handle.</li>
+          <li><strong>Queue Management:</strong> Efficient job queuing ensures optimal resource utilization.</li>
+        </ul>
+      </section>
+      
+      <section>
+        <h2>Best Practices</h2>
+        <p>To achieve optimal scraping performance, consider the following best practices:</p>
+        <ol>
+          <li>Use connection pooling to reduce TCP handshake overhead</li>
+          <li>Implement intelligent retry logic with exponential backoff</li>
+          <li>Cache DNS lookups to avoid repeated resolution</li>
+          <li>Use efficient data structures for storing scraped content</li>
+          <li>Monitor and optimize memory usage</li>
+        </ol>
+      </section>
+      
+      <section>
+        <h2>Conclusion</h2>
+        <p>Building a high-performance web scraper requires careful attention to many factors. By understanding and optimizing each component, you can achieve significant improvements in throughput and reliability.</p>
+      </section>
+    </article>
+  </main>
+  
+  <footer>
+    <p>&copy; 2026 Benchmark Test. All rights reserved.</p>
+  </footer>
+</body>
+</html>

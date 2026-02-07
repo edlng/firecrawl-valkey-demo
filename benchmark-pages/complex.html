@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complex Page - Benchmark Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Complex Benchmark Page</h1>
+    <p>This page contains various HTML elements to test comprehensive scraping.</p>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="#section1">Data Tables</a></li>
+      <li><a href="#section2">Card Grid</a></li>
+      <li><a href="#section3">Nested Lists</a></li>
+      <li><a href="#section4">Code Blocks</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section id="section1">
+      <h2>Performance Metrics Table</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Redis</th>
+            <th>Valkey</th>
+            <th>Difference</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Throughput (ops/sec)</td><td>125,000</td><td>142,000</td><td>+13.6%</td></tr>
+          <tr><td>P99 Latency (ms)</td><td>2.4</td><td>1.9</td><td>-20.8%</td></tr>
+          <tr><td>Memory Usage (MB)</td><td>512</td><td>498</td><td>-2.7%</td></tr>
+          <tr><td>CPU Usage (%)</td><td>45</td><td>38</td><td>-15.6%</td></tr>
+          <tr><td>Connections</td><td>10,000</td><td>10,000</td><td>0%</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="section2">
+      <h2>Feature Cards</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Multi-threaded I/O</h3>
+          <p>Valkey uses advanced I/O multithreading for improved performance under high concurrency.</p>
+        </div>
+        <div class="card">
+          <h3>Atomic Slot Migration</h3>
+          <p>Rebalances clusters 9x faster with zero client downtime using async snapshots.</p>
+        </div>
+        <div class="card">
+          <h3>BSD-3 License</h3>
+          <p>Fully open source under the permissive BSD-3 license, backed by Linux Foundation.</p>
+        </div>
+        <div class="card">
+          <h3>Drop-in Replacement</h3>
+          <p>100% compatible with Redis protocol. Switch by changing one line in your config.</p>
+        </div>
+        <div class="card">
+          <h3>Active Community</h3>
+          <p>Backed by AWS, Google Cloud, Oracle, Ericsson, and many more contributors.</p>
+        </div>
+        <div class="card">
+          <h3>Production Ready</h3>
+          <p>Battle-tested at scale by major cloud providers and enterprises worldwide.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="section3">
+      <h2>Nested Configuration</h2>
+      <ul>
+        <li>Server Configuration
+          <ul>
+            <li>Network Settings
+              <ul>
+                <li>bind: 0.0.0.0</li>
+                <li>port: 6379</li>
+                <li>timeout: 0</li>
+              </ul>
+            </li>
+            <li>Memory Settings
+              <ul>
+                <li>maxmemory: 4gb</li>
+                <li>maxmemory-policy: allkeys-lru</li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li>Cluster Configuration
+          <ul>
+            <li>cluster-enabled: yes</li>
+            <li>cluster-config-file: nodes.conf</li>
+            <li>cluster-node-timeout: 5000</li>
+          </ul>
+        </li>
+      </ul>
+    </section>
+
+    <section id="section4">
+      <h2>Code Examples</h2>
+      <pre><code>// Connect to Valkey
+import { GlideClient } from "@valkey/valkey-glide";
+
+const client = await GlideClient.createClient({
+  addresses: [{ host: "localhost", port: 6379 }],
+});
+
+// Basic operations
+await client.set("key", "value");
+const result = await client.get("key");
+console.log(result); // "value"
+
+// Close connection
+await client.close();</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>Generated for Firecrawl benchmark testing. Contains ~4KB of HTML content.</p>
+  </footer>
+</body>
+</html>
